@@ -1,6 +1,6 @@
 # Delay Print
 
-**TODO:** Describe what your plugin does.
+Delays the start of a print to a given time via cron job. If a print is already running when the job should be started, it will not start.
 
 ## Setup
 
@@ -8,10 +8,3 @@ Install via the bundled [Plugin Manager](https://docs.octoprint.org/en/master/bu
 or manually using this URL:
 
     https://github.com/soupuwu/octoprint_delayprint/archive/master.zip
-
-**TODO:** Describe how to install your plugin, if more needs to be done than just installing it via pip or through
-the plugin manager.
-
-## Configuration
-
-**TODO:** Describe your plugin's configuration options (if any).
