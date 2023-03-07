@@ -5,19 +5,23 @@
 
 import octoprint.plugin
 import octoprint.printer
+import octoprint.events
+from octoprint.events import Events as OEvents
 import flask
 
 try:
   import schedule
 except ModuleNotFoundError:
   import sys
+  print("Could not import schedule module!")
   sys.exit(-1)
 
 class DelayPrintPlugin(octoprint.plugin.StartupPlugin,
                        octoprint.plugin.ShutdownPlugin,
                        octoprint.plugin.TemplatePlugin,
                        octoprint.plugin.AssetPlugin,
-                       octoprint.plugin.SimpleApiPlugin):
+                       octoprint.plugin.SimpleApiPlugin,
+                       octoprint.plugin.EventHandlerPlugin):
 
     # startup plugin
     def on_after_startup(self):
@@ -33,7 +37,7 @@ class DelayPrintPlugin(octoprint.plugin.StartupPlugin,
         js=["js/delayprint.js"]
        )
 
-    # SimpleApiPlugin
+    # SimpleApi plugin
     def get_api_commands(self):
       return dict(select=["file", "starttime"])
 
@@ -43,7 +47,18 @@ class DelayPrintPlugin(octoprint.plugin.StartupPlugin,
 
     def on_api_get(self, request):
       return super().on_api_get(request)
+    
+    # EventHandler plugin
+    def on_event(self, event, payload):
+      if event == OEvents.PRINT_STARTED:
+        # When print is started, pop up and ask the user if they want it to run now or later
+        pass
 
+      if event == OEvents.DISCONNECTED:
+        # if printer is disconnected, close any plugin dialog
+        pass
+      
+      return super().on_event(event, payload)
 
     # DelayPrint
     def trigger_scheduled_print(self, file):
