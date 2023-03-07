@@ -35,14 +35,29 @@ class DelayPrintPlugin(octoprint.plugin.StartupPlugin,
     def get_assets(self):
        return dict(
         js=["js/delayprint.js"]
+        clientjs=["clientjs/delayprint.js"]
        )
 
     # SimpleApi plugin
     def get_api_commands(self):
-      return dict(select=["file", "starttime"])
+      return dict(select=["index"], schedule_print=["file", "starttime"])
 
     def on_api_command(self, command, data):
       if command == "select":
+        # hide first dialog
+        self._plugin_manager.send_plugin_message(self._identifier, dict(action="dialog:hide"))
+        choice = data["index"]
+        # if user has selected now, continue the print job
+        if choice == "Now":
+           self._printer.set_job_on_hold(False)
+        # if the user has selected later, keep job paused and show time choice dialog
+        elif choice == "Later":
+          self._plugin_manager.send_plugin_message(self._identifier, dict(action="dialog:show", template="dialog:schedule")
+        
+      elif command == "schedule_print":
+        # hide dialog
+        self._plugin_manager.send_plugin_message(self._identifier, dict(action="dialog:hide"))
+        # schedule the printing task in OS
         self.schedule_print(data["file"], data["starttime"])
 
     def on_api_get(self, request):
@@ -52,13 +67,16 @@ class DelayPrintPlugin(octoprint.plugin.StartupPlugin,
     def on_event(self, event, payload):
       if event == OEvents.PRINT_STARTED:
         # When print is started, pop up and ask the user if they want it to run now or later
-        pass
+        # pause print to allow user input
+        self._printer.set_job_on_hold(True)
+        # tell plugin to display dialog to user
+        opts = { "Now", "Later" }
+        self._plugin_manager.send_plugin_message(self._identifier, dict(action="dialog:show", template="dialog:choice", parameters=opts))
 
-      if event == OEvents.DISCONNECTED:
+      elif event == OEvents.DISCONNECTED:
         # if printer is disconnected, close any plugin dialog
+        self._plugin_manager.send_plugin_message(self._identifier, dict(action="dialog:hide"))
         pass
-      
-      return super().on_event(event, payload)
 
     # DelayPrint
     def trigger_scheduled_print(self, file):
@@ -77,7 +95,8 @@ class DelayPrintPlugin(octoprint.plugin.StartupPlugin,
         pass
 
     def schedule_print(self, file, start_time):
-      pass
+      ## temp debug log
+      self._logger.info(f"Scheduling print for {file} at {start_time}")
 
 __plugin_pythoncompat__ = ">=3.6,<4"
 __plugin_implementation__ = DelayPrintPlugin()

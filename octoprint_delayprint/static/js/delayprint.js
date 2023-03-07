@@ -5,43 +5,69 @@ $(function() {
       var self = this;
 
       self.settings = parameters[0];
+      self.dialog = ko.observable(undefined)
 
-      // this will hold the URL currently displayed by the iframe
-      self.currentUrl = ko.observable();
-
-      // this will hold the URL entered in the text field
-      self.newUrl = ko.observable();
-
-      // this will be called when the user clicks the "Go" button and set the iframe's URL to
-      // the entered URL
-      self.goToUrl = function() {
-          self.currentUrl(self.newUrl());
-      };
-
-      // This will get called before the HelloWorldViewModel gets bound to the DOM, but after its
-      // dependencies have already been initialized. It is especially guaranteed that this method
-      // gets called _after_ the settings have been retrieved from the OctoPrint backend and thus
-      // the SettingsViewModel been properly populated.
-      self.onBeforeBinding = function() {
-          let base = "https://en.wikipedia.org/wiki/"
-          let target = base.concat(self.settings.settings.plugins.delayprint.TestString())
-          self.newUrl(target);
-          self.goToUrl();
-      }
+      self.time_input = ko.observable(undefined)
   }
 
-  // This is how our plugin registers itself with the application, by adding some configuration
-  // information to the global variable OCTOPRINT_VIEWMODELS
+  self.getDialogText = function(dialog_type) {
+    if(dialog_type == "dialog:choice") {
+      return gettext("Run print now or later?");
+    }
+    else if (dialog_type == "dialog:schedule") {
+      return gettext("Schedule print for when?");
+    }
+    else {
+      return gettext("");
+    }
+  };
+
+  self.onDataUpdaterPluginMessage = function(plugin, data) {
+    if(plugin != "delayprint") {
+      return
+    }
+    switch(data.action) {
+      case "dialog:show":
+        self.showDialog(self.getDialogText(data.action), data.parameters);
+        break;
+      case "dialog:hide":
+        self.hideDialog();
+        break;
+    }
+  };
+
+  self.dialogChoice = function(params, index) {
+    Octoprint.plugins.delayprint.select(params[index])
+  };
+// TODO: implement UI for scheduling
+  self.showDialog = function(text, parameters) {
+    var opts = {
+      title: gettext("Delay Print"),
+      message: text,
+      selections: Array.from(parameters),
+      maycancel: true,
+      onselect: function(choice_index) {
+        if(index > -1) {
+          self.dialogChoice(parameters, index);
+        }
+      },
+      onclose: function() {
+        self.dialog = ko.observable(undefined);
+      }
+    };
+    self.dialog(showSelectionDialog(opts));
+  };
+
+  self.hideDialog = function() {
+    if(self.dialog != undefined) {
+      self.dialog('hide');
+      self.dialog = ko.observable(undefined);
+    }
+  }
+
+
   OCTOPRINT_VIEWMODELS.push([
-      // This is the constructor to call for instantiating the plugin
       DelayPrintViewModel,
-
-      // This is a list of dependencies to inject into the plugin, the order which you request
-      // here is the order in which the dependencies will be injected into your view model upon
-      // instantiation via the parameters argument
       ["settingsViewModel"],
-
-      // Finally, this is the list of selectors for all elements we want this view model to be bound to.
-      ["#tab_plugin_delayprint"]
   ]);
 });
